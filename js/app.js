@@ -177,7 +177,7 @@ function initMap() {
     });
   }
 
-  $.getJSON('http://nicki.fn.lc:8282/maps/map.json', function(data) {
+  $.getJSON('maps/map.json', function(data) {
     buildings = data;
     var maxFloors = 0;
 
