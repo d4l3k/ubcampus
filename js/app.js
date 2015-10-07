@@ -2,7 +2,9 @@ var map;
 var config = {};
 window.location.search.slice(1).split("&").forEach(function(p){
   var parts = p.split("=");
-  config[parts[0]] = JSON.parse(parts[1]) || parts[1];
+  if (parts.length > 1) {
+    config[parts[0]] = JSON.parse(parts[1]||null) || parts[1];
+  }
 });
 var buildings = [];
 var roomIndex = {};
