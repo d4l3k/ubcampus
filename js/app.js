@@ -55,9 +55,23 @@ function setFloor(floor) {
     });
   });
 }
+
 function cleanPoint(point) {
   if (point.constructor.name === "L") {
     return point;
+  }
+
+  if (point.M) {
+    point.L = point.M;
+    delete point.M
+  }
+  if (point.J) {
+    point.H = point.J;
+    delete point.J
+  }
+  if (point.M) {
+    point.L = point.M;
+    delete point.M
   }
 
   if (point.lat) {
@@ -73,6 +87,30 @@ function cleanPoint(point) {
 function initMap() {
   if (config.edit) {
     $('#edit-mode').css('display', 'block');
+  }
+  function setupFloorOverlay(building, floor) {
+    google.maps.event.addListener(floor.overlay, 'click', function(event) {
+      console.log("click", event.latLng);
+      if (!config.edit) return;
+      if (handleFloorResize(event)) {
+        return;
+      }
+      var id = prompt('Enter room number:');
+      if (!id) return;
+      if (!floor.rooms) {
+        floor.rooms = [];
+      }
+      var room = {
+        id: id,
+        position: event.latLng,
+      };
+      floor.rooms.push(room);
+      setupRoom(building, floor, room, true);
+    });
+    google.maps.event.addListener(floor.overlay, 'rightclick', function(event) {
+      resizeStart = event.latLng;
+      resizeFloor = floor;
+    });
   }
   function updateSearch() {
     var room = window.location.hash.slice(1);
@@ -94,8 +132,79 @@ function initMap() {
     mapTypeId: google.maps.MapTypeId.ROADMAP,
     zoom: 20
   });
+  var lastClicked;
+  var resizeStart;
+  var resizeFloor;
+  function handleFloorResize(event) {
+    if (!resizeStart) {
+      return false;
+    }
+    diffH = event.latLng.lat() - resizeStart.lat();
+    diffL = event.latLng.lng() - resizeStart.lng();
+    if (Math.abs(diffH) > Math.abs(diffL)) {
+      if (diffH > 0) {
+        resizeFloor.coords.north = event.latLng.lat();
+      } else {
+        resizeFloor.coords.south = event.latLng.lat();
+      }
+    } else {
+      if (diffL > 0) {
+        resizeFloor.coords.east = event.latLng.lng();
+      } else {
+        resizeFloor.coords.west = event.latLng.lng();
+      }
+    }
+    resizeFloor.overlay.setMap(null);
+    resizeFloor.overlay = new google.maps.GroundOverlay(resizeFloor.image, resizeFloor.coords);
+    resizeFloor.overlay.setMap(map);
+    var building;
+    buildings.forEach(function(b) {
+      if (b.floors.indexOf(resizeFloor) >= 0) {
+        building = b;
+      }
+    });
+    setupFloorOverlay(building, resizeFloor);
+    resizeStart = null;
+    resizeFloor = null;
+    return true;
+  }
   google.maps.event.addListener(map, 'click', function(event) {
-    console.log("click", event.latLng);
+    console.log("click", event.latLng, event);
+    lastClicked = event.latLng;
+    if (config.edit) {
+      if (handleFloorResize(event)) {
+        return;
+      }
+      $('#modal-insert').openModal();
+    }
+  });
+  $('#new-building').click(function(e) {
+    var name = $('#building_name').val();
+    var sis = $('#building_sis').val();
+    var floors = $('#building_floors').val().split('\n');
+    var building = {
+      name: name,
+      sis: sis,
+      floors: []
+    }
+    floors.forEach(function(floor) {
+      if (floor.length == 0) {
+        return;
+      }
+      var parts = floor.split(',')
+      building.floors.push({
+        coords: {
+          north: lastClicked.H + 0.0003,
+          south: lastClicked.H - 0.0003,
+          west: lastClicked.L - 0.0003,
+          east: lastClicked.L + 0.0003
+        },
+        floor: parts[0],
+        image: parts[1]
+      });
+    });
+    buildings.push(building);
+    setupBuilding(building);
   });
   var index = lunr(function () {
     this.ref('id');
@@ -150,6 +259,7 @@ function initMap() {
           '<option value="">room</option>' +
           '<option>food</option>' +
           '<option>restroom</option>' +
+          '<option>printer</option>' +
           '</select>' +
           '<a class="waves-effect btn-flat delete">Delete</a>';
       }
@@ -179,37 +289,24 @@ function initMap() {
     });
   }
 
-  $.getJSON('maps/map.json', function(data) {
-    buildings = data;
-    var maxFloors = 0;
-
-    buildings.forEach(function(building) {
-      if (building.floors.length > maxFloors) {
-        maxFloors = building.floors.length;
-      }
-      building.floors.forEach(function(floor) {
-        floor.overlay = new google.maps.GroundOverlay(floor.image, floor.coords);
-        google.maps.event.addListener(floor.overlay, 'click', function(event) {
-          console.log("click", event.latLng);
-          if (!config.edit) return;
-          var id = prompt('Enter room number:');
-          if (!id) return;
-          if (!floor.rooms) {
-            floor.rooms = [];
-          }
-          var room = {
-            id: id,
-            position: event.latLng,
-          };
-          floor.rooms.push(room);
-          setupRoom(building, floor, room, true);
-        });
-
-        (floor.rooms || []).forEach(function(room) {
-          setupRoom(building, floor, room);
-        });
+  var maxFloors = 0;
+  function setupBuilding(building) {
+    if (building.floors.length > maxFloors) {
+      maxFloors = building.floors.length;
+    }
+    building.floors.forEach(function(floor) {
+      floor.overlay = new google.maps.GroundOverlay(floor.image, floor.coords);
+      setupFloorOverlay(building, floor);
+      (floor.rooms || []).forEach(function(room) {
+        setupRoom(building, floor, room);
       });
     });
+  }
+
+  $.getJSON('maps/map.json', function(data) {
+    buildings = data;
+
+    buildings.forEach(setupBuilding);
     for (var i=0;i<maxFloors;i++) {
       document.querySelector("#floors").innerHTML+='<a class="waves-effect btn-flat">'+(maxFloors-i-1)+'</a>';
     }
@@ -220,3 +317,4 @@ function initMap() {
     updateSearch();
   });
 }
+

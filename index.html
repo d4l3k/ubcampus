@@ -71,6 +71,33 @@ html, body { height: 100%; margin: 0; padding: 0; }
     <div id="edit-mode">
       Edit mode enabled
     </div>
+    <div id="modal-insert" class="modal bottom-sheet">
+      <div class="modal-content">
+        <h4>Map Insert Building</h4>
+        <p>Create a new building!</p>
+        <div class="row">
+          <div class="input-field col s6">
+            <input id="building_name" type="text" class="validate">
+            <label for="building_name">Name</label>
+          </div>
+          <div class="input-field col s6">
+            <input id="building_sis" type="text" class="validate">
+            <label for="building_sis">SIS</label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="input-field col s12">
+            <textarea id="building_floors" class="materialize-textarea"></textarea>
+            <label for="building_floors">Floors (CSV: floor, image)</label>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <a class="modal-action modal-close waves-effect btn-flat">Close</a>
+        <a id="new-building" class="modal-action modal-close waves-effect btn-flat">new building</a>
+      </div>
+    </div>
     <script src="js/app.js"></script>
     <script async defer
             src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuuTjcIYnnxtgKniCkWXp6nPupfThkKPA&callback=initMap">
