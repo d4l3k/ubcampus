@@ -113,7 +113,7 @@ function initMap() {
     });
   }
   function updateSearch() {
-    var room = window.location.hash.slice(1);
+    var room = decodeURIComponent(window.location.hash.slice(1));
     $('#search').val(room);
     if (roomIndex[room]) {
       focusOn(room);
@@ -194,10 +194,10 @@ function initMap() {
       var parts = floor.split(',')
       building.floors.push({
         coords: {
-          north: lastClicked.H + 0.0003,
-          south: lastClicked.H - 0.0003,
-          west: lastClicked.L - 0.0003,
-          east: lastClicked.L + 0.0003
+          north: lastClicked.lat() + 0.0003,
+          south: lastClicked.lat() - 0.0003,
+          west: lastClicked.lng() - 0.0003,
+          east: lastClicked.lng() + 0.0003
         },
         floor: parts[0],
         image: parts[1]
